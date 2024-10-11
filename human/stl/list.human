@@ -1,7 +1,7 @@
 module list where
 
 include pair as pair {first, second};
-include bool as {true, false, if, not};
+include bool as {true, false, if, not, xor};
 
 def empty = pair::new false id;
 def cons = \val.\list. pair::new true (pair::new val list);
@@ -27,4 +27,21 @@ def foldr = \func.\init.\list.
       (head list)
       (foldr func init (tail list))
     )
+;
+
+def zip = \l1.\l2.
+  if (or (is_empty l1) (is_empty l2))
+    empty
+    (cons
+      (pair::new (head l1) (head l2))
+      (zip (tail l1) (tail l2))
+    )
+;
+
+def eq_len = \l1.\l2.
+  if (and (is_empty l1) (is_empty l2))
+    true
+    if (or (is_empty l1) (is_empty l2))
+      false
+      (eq_len (tail l1) (tail l2))
 ;

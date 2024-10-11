@@ -8,3 +8,6 @@ def if = \cond.\then.\else. cond! then else;
 def not = \val. if! val false true;
 def and = \a.\b. if! a b false;
 def or  = \a.\b. if! a true b;
+def xor = \a.\b. and (or a b) (not (and a b));
+
+def eq = \a.\b. not (xor a b);

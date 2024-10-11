@@ -1,4 +1,46 @@
 module bits where
 
-include list as {empty, head, tail};
-include bool as {true, false, if, map};
+include list as {is_empty, foldr, head, tail, len_eq, zip};
+include bool as bool {true, false, if, map};
+include pair as {first, second};
+
+def all = \list.
+  if (is_empty list)
+    true
+    (and
+      (head list)
+      (all (tail list))
+    )
+;
+
+def any = \list.
+  if (is_empty list)
+    false
+    (or
+      (head list)
+      (any (tail list))
+    )
+;
+
+def eq_elements = \l1.\l2.
+  all
+    (map
+      (\lr. bool::eq (first lr) (second lr))
+      (zip l1 l2)
+    )
+;
+
+def eq = \l1.\l2.
+  if (eq_len l1 l2)
+    (eq_elements l1 l2)
+    false
+;
+
+def not = \list.
+  if (is_empty list)
+    empty
+    (cons
+      (bool::not (head list))
+      (not (tail list))
+    )
+;
