@@ -1,0 +1,3 @@
+-- Human programs are single expressions.
+-- Hello world is just the string itself.
+"Hello, World!"

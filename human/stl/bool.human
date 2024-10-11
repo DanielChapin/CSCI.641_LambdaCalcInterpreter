@@ -1,0 +1,10 @@
+module bool where
+
+def true = \x.\y. x;
+def false = \x.\y. y;
+
+def if = \cond.\then.\else. cond! then else;
+
+def not = \val. if! val false true;
+def and = \a.\b. if! a b false;
+def or  = \a.\b. if! a true b;

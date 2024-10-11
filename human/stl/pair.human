@@ -1,0 +1,5 @@
+module pair where
+
+def new = \left.\right. \oper. oper! left right;
+def first = \left.\right. left;
+def second = \left.\right. right;

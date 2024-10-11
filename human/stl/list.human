@@ -1,0 +1,30 @@
+module list where
+
+include pair as pair {first, second};
+include bool as {true, false, if, not};
+
+def empty = pair::new false id;
+def cons = \val.\list. pair::new true (pair::new val list);
+
+def is_empty = \list. not (first list);
+
+def head = \list. first (second list);
+def tail = \list. second (second list);
+
+def map = \func.\list. 
+  if (is_empty list)
+    empty
+    (cons
+      (func (head list))
+      (map func (tail list))
+    )
+;
+
+def foldr = \func.\init.\list.
+  if (is_empty list)
+    init
+    (func 
+      (head list)
+      (foldr func init (tail list))
+    )
+;
