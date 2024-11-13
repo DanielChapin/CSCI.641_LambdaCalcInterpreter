@@ -1,9 +1,21 @@
+module UTLC where
+
 import Data.List
 
 data LToken
   = Lambda
+  | LParen
+  | RParen
   | Dot
   | Id String
+
+getToken :: String -> (LToken, String)
+getToken ('\\' : rest) = (Lambda, rest)
+getToken ('(' : rest) = (LParen, rest)
+getToken (')' : rest) = (RParen, rest)
+getToken ('.' : rest) = (Dot, rest)
+getToken str
+  | Just [name] <- matchRegex
 
 data LExp var
   = Abstraction var (LExp var)
@@ -32,7 +44,7 @@ alphaConvert :: Eq a => a -> a -> LExp a -> LExp a
 alphaConvert f t (Abstraction param body)
   | param == f = Abstraction t (alphaConvert f t body)
   | otherwise = Abstraction param (alphaConvert f t body)
-alphaConvert f t (Application l r) = Application (alphaConvert f t r) (alphaConvert f t l)
+alphaConvert f t (Application l r) = Application (alphaConvert f t l) (alphaConvert f t r)
 alphaConvert f t (Var v)
   | v == f = Var t
   | otherwise = Var v
@@ -59,10 +71,11 @@ alphaAll used next exp =
           fst $
             foldr
               (\x (exp, bound) -> let x' = makeFreshVar bound x next in (alphaConvert x x' exp, x' : bound))
-              (exp, bound)
+              (exp, filter (`notElem` xs) used ++ bound)
               xs
 
 resolveAlpha :: Eq a => (a -> a) -> LExp a -> LExp a -> (LExp a, LExp a)
+resolveAlpha next l@(Abstraction x b) r = (l, alphaAll (filter (/= x) $ boundVars l) next r)
 resolveAlpha next l r = (l, alphaAll (boundVars l) next r)
 
 step :: Eq a => (a -> a) -> LExp a -> Maybe (LExp a)
@@ -73,6 +86,9 @@ step next (Application l r)
   -- This evaluates to (\x. (\x. x) x), which now has ambiguity (the x in the body of the inner abstraction).
   -- As such, whenever we are performing a beta reduction, we must first check if there is any overlap in variable names.
   -- To resolve this, we need to swap to a free variable (alpha-conversion)
+  -- Also consider ((\x. \x'. x) (\x. \x''. x))...
+  -- If we're creating new variables by appending ' then we can run into a collision within the reducing expression.
+  -- TODO Maybe the batch of alpha reductions should be their own step?
   | (Abstraction v body, r) <- resolveAlpha next l r = Just $ betaReduce v body r
 step _ _ = Nothing
 
