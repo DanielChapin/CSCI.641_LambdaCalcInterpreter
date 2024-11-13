@@ -1,3 +1,17 @@
--- Human programs are single expressions.
--- Hello world is just the string itself.
-"Hello, World!"
+-- Programs in Human look a bit strange because literally all you have is functions.
+-- As a result, you need to explicitly define how you want the interpreter to present the result.
+-- It also means that if you want non-trivial inputs, or at least inputs you don't want to encode by hand,
+-- you need to specify how that input should be encoded.
+
+-- Here we define hello_world as the ascii string "Hello, World" encoded as a list of bnums.
+def hello_world = #ascii_to_bnum_list["Hello, World"];
+
+-- Bringing the standard library's linked list's append method into scope
+import stl.list as {append};
+
+-- Defining hello_world_ecstatic as the result of hello_world with the character '!' at the end.
+def hello_world_ecstatic = append hello_world #ascii_to_bnum["!"];
+
+-- Creating output evaluations using the `out` keyword.
+out normal = #bnum_list_to_ascii![hello_world];
+out excited = #bnum_list_to_ascii![hello_world_ecstatic];

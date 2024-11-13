@@ -45,3 +45,12 @@ def eq_len = \l1.\l2.
       false
       (eq_len (tail l1) (tail l2))
 ;
+
+def append = \val.\list.
+  if (is_empty list)
+    (cons val empty)
+    (cons 
+      (head list)
+      (append val (tail list))
+    )
+;
