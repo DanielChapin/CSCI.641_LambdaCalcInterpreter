@@ -1,4 +1,4 @@
-module list where
+module list;
 
 include pair as pair {first, second};
 include bool as {true, false, if, not, xor};

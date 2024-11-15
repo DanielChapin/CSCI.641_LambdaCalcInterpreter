@@ -1,4 +1,4 @@
-module pair where
+module pair;
 
 def new = \left.\right. \oper. oper left right;
 def first = \left.\right. left;

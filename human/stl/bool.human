@@ -1,4 +1,4 @@
-module bool where
+module bool;
 
 def true = \x.\y. x;
 def false = \x.\y. y;

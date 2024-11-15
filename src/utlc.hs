@@ -2,21 +2,6 @@ module UTLC where
 
 import Data.List
 
-data LToken
-  = Lambda
-  | LParen
-  | RParen
-  | Dot
-  | Id String
-
-getToken :: String -> (LToken, String)
-getToken ('\\' : rest) = (Lambda, rest)
-getToken ('(' : rest) = (LParen, rest)
-getToken (')' : rest) = (RParen, rest)
-getToken ('.' : rest) = (Dot, rest)
-getToken str
-  | Just [name] <- matchRegex
-
 data LExp var
   = Abstraction var (LExp var)
   | Application (LExp var) (LExp var)

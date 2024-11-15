@@ -1,4 +1,4 @@
-module bits where
+module bits;
 
 include list as {is_empty, foldr, head, tail, len_eq, zip};
 include bool as bool {true, false, if, map};
