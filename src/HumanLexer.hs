@@ -1,4 +1,4 @@
-module AST where
+module HumanLexer where
 
 import Data.Bifunctor (Bifunctor (first, second))
 import Data.Char (isAlpha, isAlphaNum, isSpace)
@@ -22,7 +22,7 @@ import Data.Char (isAlpha, isAlphaNum, isSpace)
 -- Exp ::= \<name>. Exp
 --     ::= (Exp) | Exp Exp
 --     ::= <name> | <name>::<name>
---     ::= #<name>[<string>] | #<name>![Exp]
+--     ::= #<name>[<string> | Exp | <nothing>]
 --
 -- <name> ::= [a-zA-Z_][a-zA-Z0-9_]*'*
 -- <string> ::= .*
@@ -37,6 +37,14 @@ import Data.Char (isAlpha, isAlphaNum, isSpace)
 -- import stl.bits as epic_bits { all as bits_all, any };
 --  - imports "stl/bits.human" qualified as epic_bits. Also add all, renamed to bits_all to the scope, as well as any.
 
+data HKeyword
+  = KwDef
+  | KwOut
+  | KwModule
+  | KwImport
+  | KwAs
+  deriving (Eq, Show)
+
 data HToken
   = LBracket
   | RBracket
@@ -46,41 +54,20 @@ data HToken
   | RParen
   | Comma
   | Dot
-  | Bang
   | Equals
-  | Colon
   | DoubleColon
   | Semicolon
   | Backslash
   | Hash
-  | KwDef
-  | KwOut
-  | KwModule
-  | KwImport
-  | KwAs
+  | Keyword HKeyword
   | IdStr String -- Ids (<name>)
   | Text String -- <string> (as of right now only used in the context of )
   | EOF
   deriving (Eq, Show)
 
-data HExp
-  = Lambda String HExp
-  | Application HExp HExp
-  | Id (Maybe String) String
-  | RawMacroCall String String
-  | ExpMacroCall String HExp
-  deriving (Eq, Show)
-
-data HStatement
-  = Import String (Maybe String) (Maybe [(String, Maybe String)])
-  | Def String HExp
-  | Out String HExp
-
-data HProgram = HProgram (Maybe String) [HStatement]
-
 singleCharTokens :: [(Char, HToken)]
 singleCharTokens =
-  [('[', LBracket), (']', RBracket), ('{', LCurly), ('}', RCurly), ('(', LParen), (')', RParen), (',', Comma), ('.', Dot), ('!', Bang), ('=', Equals), (':', Colon), (';', Semicolon), ('\\', Backslash), ('#', Hash)]
+  [('[', LBracket), (']', RBracket), ('{', LCurly), ('}', RCurly), ('(', LParen), (')', RParen), (',', Comma), ('.', Dot), ('=', Equals), (';', Semicolon), ('\\', Backslash), ('#', Hash)]
 
 escapeChar :: Char -> Maybe Char
 escapeChar ch = do
@@ -111,11 +98,11 @@ getIdKw _ = Nothing
 
 convertIdKw :: String -> HToken
 convertIdKw str = case str of
-  "def" -> KwDef
-  "out" -> KwOut
-  "module" -> KwModule
-  "import" -> KwImport
-  "as" -> KwAs
+  "def" -> Keyword KwDef
+  "out" -> Keyword KwOut
+  "module" -> Keyword KwModule
+  "import" -> Keyword KwImport
+  "as" -> Keyword KwAs
   str -> IdStr str
 
 data GetTokenError = UnexpectedChar Char | UnexpectedNewline | UnexpectedEOF deriving (Show)
