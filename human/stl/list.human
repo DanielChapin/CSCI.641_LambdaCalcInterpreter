@@ -1,7 +1,7 @@
 module list;
 
-include pair as pair {first, second};
-include bool as {true, false, if, not, xor};
+import pair as pair {first, second};
+import bool as {true, false, if, not, xor};
 
 def empty = pair::new false id;
 def cons = \val.\list. pair::new true (pair::new val list);
