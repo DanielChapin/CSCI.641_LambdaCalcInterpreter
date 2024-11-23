@@ -22,7 +22,6 @@ data HProgram = HProgram (Maybe String) [HStatement] deriving (Show)
 
 data HCompileError
   = UndefinedIdentifier String
-  | UnresolvedImport String
   | UnexpectedKw HKeyword
   | UnexpectedSymbol String
   | -- Expected, got
@@ -230,3 +229,11 @@ programStatementsFromTokens toks = do
   (statement, toks') <- getStatement toks
   rest <- programStatementsFromTokens toks'
   return $ statement : rest
+
+isOutStatement :: HStatement -> Bool
+isOutStatement (Out {}) = True
+isOutStatement _ = False
+
+isDefStatement :: HStatement -> Bool
+isDefStatement (Def {}) = True
+isDefStatement _ = False

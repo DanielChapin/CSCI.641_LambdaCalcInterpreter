@@ -10,14 +10,14 @@ main = do
   inPath <- case args of
     [path] -> return path
     _ -> fail "Expected exactly 1 input."
-  result <- parseFile $ readFile inPath
+  result <- parseFile inPath
   case result of
     Left err -> do putStrLn $ "A fatal error occured.\n" ++ show err
     Right prog -> do print prog
 
-parseFile :: IO String -> IO (Either HCompileError HProgram)
+parseFile :: String -> IO (Either HCompileError HProgram)
 parseFile file = do
-  input <- file
+  input <- readFile file
   case tokenize input of
     Left err -> return . Left . ErrMsg $ "Error tokenizing input.\n" ++ show err
     Right toks -> return $ programFromTokens toks

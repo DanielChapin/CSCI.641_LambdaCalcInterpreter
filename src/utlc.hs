@@ -6,6 +6,7 @@ data LExp var
   = Abstraction var (LExp var)
   | Application (LExp var) (LExp var)
   | Var var
+  deriving (Eq)
 
 instance {-# OVERLAPPING #-} Show (LExp String) where
   show (Abstraction param body) = "(\\" ++ param ++ ". " ++ show body ++ ")"
