@@ -1,0 +1,5 @@
+def my_fun = \x. \y. y x;
+
+out ez = \z. my_fun z;
+out hard = \x. my_fun x;
+out hardest = \x. \y. my_fun x y;

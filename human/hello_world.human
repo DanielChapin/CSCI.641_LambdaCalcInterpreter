@@ -13,5 +13,5 @@ import stl.list as {append};
 def hello_world_ecstatic = append hello_world #ascii_to_bnum["!"];
 
 -- Creating output evaluations using the `out` keyword.
-out normal = #bnum_list_to_ascii[hello_world];
-out excited = #bnum_list_to_ascii[hello_world_ecstatic];
+out normal = hello_world;
+out excited = hello_world_ecstatic;
