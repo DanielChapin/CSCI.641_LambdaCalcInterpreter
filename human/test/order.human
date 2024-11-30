@@ -1,0 +1,4 @@
+-- Eval: (\x.\y.x y) (\x.x) (\y.y) -> (\y.(\x.x) y) (\y.y) -> (\x.x) (\y.y) -> \y.y
+out simplest = (\x.\y.x y) (\x.x) (\y.y);
+
+out reordered = (\x.\y.x y) ((\x.x) (\y.y));

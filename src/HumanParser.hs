@@ -12,11 +12,34 @@ data HExp
   | MacroCall String [HMacroArg]
   deriving (Eq, Show)
 
+showExpressionTree' :: String -> String -> HExp -> String
+showExpressionTree' indent newline (Lambda var body) =
+  let newline' = newline ++ indent
+   in "lambda " ++ show var ++ newline' ++ showExpressionTree' indent newline' body
+showExpressionTree' indent newline (Apply l r) =
+  let newline' = newline ++ indent
+   in "Apply" ++ newline' ++ showExpressionTree' indent newline' l ++ newline' ++ showExpressionTree' indent newline' r
+showExpressionTree' _ _ (Id Nothing name) = name
+showExpressionTree' _ _ (Id (Just qualifier) name) = qualifier ++ "::" ++ name
+showExpressionTree' _ _ (MacroCall name args) = "#" ++ name ++ show args
+
 data HStatement
   = Import [String] (Maybe String) (Maybe [(String, Maybe String)])
   | Def String HExp
   | Out String HExp
   deriving (Show)
+
+showStatementTree :: HStatement -> String
+showStatementTree = showStatementTree' "| " "\n"
+
+showStatementTree' :: String -> String -> HStatement -> String
+showStatementTree' indent newline (Import path qualifier fields) = "import " ++ show path ++ " as " ++ show qualifier ++ " " ++ show fields
+showStatementTree' indent newline (Def name body) =
+  let newline' = newline ++ indent
+   in "def " ++ name ++ newline' ++ showExpressionTree' indent newline' body
+showStatementTree' indent newline (Out name body) =
+  let newline' = newline ++ indent
+   in "out " ++ name ++ newline' ++ showExpressionTree' indent newline' body
 
 data HProgram = HProgram (Maybe String) [HStatement] deriving (Show)
 
@@ -63,12 +86,10 @@ validateExpressionToken _ = Nothing
 convertToExpression :: [HToken] -> Either HCompileError HExp
 convertToExpression [] = Left EmptyExpression
 convertToExpression toks = do
-  (exp, toks) <- getExpression' toks
+  (exp, toks) <- getExpression toks
   case toks of
     [] -> return exp
-    toks -> do
-      exp' <- convertToExpression toks
-      return $ Apply exp exp'
+    tok : _ -> Left $ UnexpectedToken tok
 
 getId :: [HToken] -> Either HCompileError (String, [HToken])
 getId ((IdStr id) : rest) = Right (id, rest)

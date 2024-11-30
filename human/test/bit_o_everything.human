@@ -1,0 +1,30 @@
+-- Need to specify the stl as an import path
+import pair as { new as make_pair, first, second };
+import bool as { if, true, false, not, and };
+
+out get_first = first ((make_pair #id["first"]) #id["second"]);
+out get_second = second ((make_pair #id["first"]) #id["second"]);
+
+out if_true =
+  if (true)
+    #id["true_case"]
+    #id["false_case"];
+
+out if_false =
+  if (false)
+    #id["true_case"]
+    #id["false_case"];
+
+out true_and_true = and true true;
+out true_and_false = and true false;
+out false_and_true = and false true;
+out false_and_false = and false false;
+
+out nested_ifs = 
+  if false
+    #id["wrong1"]
+    (
+      if true
+        #id["right"]
+        #id["wrong2"]
+    );

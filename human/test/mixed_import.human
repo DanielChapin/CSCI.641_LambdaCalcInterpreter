@@ -1,0 +1,4 @@
+import simple_def as {id};
+import application as lib;
+
+out mixed = id lib::true;

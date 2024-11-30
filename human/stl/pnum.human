@@ -1,0 +1,12 @@
+-- Module for common peano numeral operations
+module pnum;
+
+import pair as pair {first, second};
+import bool as {true, false};
+import util as {id};
+
+def zero = pair::new false id;
+def is_zero = \num. not (first num);
+
+def increment = \num. pair::new true num;
+def decrement = \num. second num;

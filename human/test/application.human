@@ -1,0 +1,8 @@
+def id = \x. x;
+def true = \x. \y. x;
+
+-- Evaluation goes from (id true) -> true = \x.\y. x
+out application = id true;
+
+-- Evaluation goes from (((id true) tc) fc) -> ((true tc) fc) -> (\y. tc) fc -> tc = \true_case.true_case
+out complex = id true (\true_case. true_case) (\false_case. false_case);

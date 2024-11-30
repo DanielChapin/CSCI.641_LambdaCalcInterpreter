@@ -1,0 +1,3 @@
+import simple_def as { id };
+
+out imported = id;

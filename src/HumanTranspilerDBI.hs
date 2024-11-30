@@ -7,31 +7,43 @@ import Data.Functor ((<&>))
 import Data.List (elemIndex)
 import Data.Map (Map, empty, fromList, insert, member, union)
 import Data.Map qualified as Map
-import Data.Maybe (isNothing)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import GHC.IO (unsafePerformIO)
+import Helpers (selectErrorsElseValues)
 import HumanParser (HExp (..), HMacroArg (..), HProgram (HProgram), HStatement (Def, Import, Out), isDefStatement, isOutStatement)
+import Imports (ImportError, findModulePath, joinModulePath, resolveImport)
 
 data Context = Context
   { outs :: [(String, HExp)],
     defs :: Map String HExp,
-    -- Key: (alias/name, qualifier); Value: (module path, name)
-    imports :: Map (String, Maybe String) ([String], String),
+    -- Key: alias/name; Value: (module path, name)
+    importedSymbols :: Map String ([String], String),
+    importedQualifiers :: Map String [String],
     varStack :: [String],
-    currentDef :: Maybe String,
+    importPaths :: [FilePath],
     modules :: Map [String] (Map String HExp),
+    modulePaths :: [[String]],
     applyTranspilationMacro :: String -> [HMacroArg] -> TranspilationResult HExp
   }
+
+macroHandler :: [(String, [HMacroArg] -> TranspilationResult HExp)] -> String -> [HMacroArg] -> TranspilationResult HExp
+macroHandler handlers name args
+  | Just handler <- lookup name handlers = handler args
+  | otherwise = Left [TError (MacroNotFound name) Nothing (Just $ MacroCall name args) Nothing]
 
 emptyContext :: Context
 emptyContext =
   Context
     { outs = [],
       defs = empty,
-      imports = empty,
+      importedSymbols = empty,
+      importedQualifiers = empty,
       varStack = [],
-      currentDef = Nothing,
+      importPaths = ["."],
       modules = empty,
+      modulePaths = [],
       applyTranspilationMacro = \macroName args -> Left [TError Other Nothing (Just $ MacroCall macroName args) (Just "No macro handler supplied.")]
     }
 
@@ -40,6 +52,8 @@ data TranspilationErrorType
   | UndefinedVariable String
   | UnresolvedImport String
   | OverlappingName String
+  | ImportFailure [ImportError]
+  | MacroNotFound String
   | Other
   deriving (Show)
 
@@ -54,10 +68,33 @@ type TranspilationResult a = Either [TranspilationError] a
 --  3. Validate that those requirements are present. (This involves finding imported modules and parsing them)
 --  4. Recursively generate all the required definitions for all of the outputs, reusing anything possible.
 --  5. Pack the defined outputs and return those values.
-transpile :: HProgram -> TranspilationResult [(String, DBILExp)]
-transpile program@(HProgram moduleName statements) = do
-  context@(Context {outs}) <- destructureStatements statements emptyContext
-  transpile' $ context {outs = map (\(name, body) -> (name, encodeRecursion name body)) outs}
+transpile :: HProgram -> [FilePath] -> [(String, [HMacroArg] -> TranspilationResult HExp)] -> IO (TranspilationResult [(String, DBILExp)])
+transpile program@(HProgram moduleName statements) importPaths macros =
+  -- Look through all the statements and gather all important information
+  case destructureStatements statements (emptyContext {importPaths, applyTranspilationMacro = macroHandler macros}) of
+    Left err -> return $ Left err
+    Right context -> do
+      -- Resolve all module imports
+      importContext <- resolveImports context
+      case importContext of
+        Left err -> return $ Left err
+        Right context@(Context {outs}) ->
+          return . transpile' $ context {outs = map (\(name, body) -> (name, encodeRecursion name body)) outs}
+
+resolveImports :: Context -> IO (TranspilationResult Context)
+resolveImports context@(Context {modulePaths, importPaths, modules}) = do
+  imports <- mapM (flip resolveImport importPaths) modulePaths
+  case selectErrorsElseValues imports of
+    Left errs -> return $ Left [TError (ImportFailure errs) Nothing Nothing Nothing]
+    Right imports ->
+      let lookups = selectErrorsElseValues $ map (\(HProgram _ statements) -> moduleLookup statements) imports
+       in case lookups of
+            Left errLists -> return . Left $ concat errLists
+            Right mappings -> return $ Right context {modules = modules `Map.union` fromList (zip modulePaths mappings)}
+  where
+    moduleLookup statements = do
+      context@(Context {defs}) <- destructureStatements statements emptyContext
+      return defs
 
 transpile' :: Context -> TranspilationResult [(String, DBILExp)]
 transpile' (Context {outs = []}) = return []
@@ -67,13 +104,25 @@ transpile' context@(Context {outs = ((name, out) : remaining)}) = do
   return $ (name, out) : rest
 
 transpileExp :: Context -> HExp -> TranspilationResult (Context, DBILExp)
-transpileExp context@(Context {varStack}) exp@(Lambda param body) = do
+transpileExp context@(Context {varStack}) (Lambda param body) = do
   (context', body) <- transpileExp (context {varStack = param : varStack}) body
   return (updateContext context context', Abstraction param body)
-transpileExp context@(Context {varStack, defs}) exp@(Id qualifier name)
+transpileExp context@(Context {varStack, defs, importedSymbols, importedQualifiers, modules}) exp@(Id qualifier name)
   | Just index <- displayName qualifier name `elemIndex` varStack =
       return (context, Var $ toInteger index)
-  | (True, Just def) <- (isNothing qualifier, Map.lookup name defs) = do
+  | (Nothing, Just def) <- (qualifier, Map.lookup name defs) = do
+      (context', result) <- transpileExp context def
+      return (updateContext context context', result)
+  -- Resulting to checking imports for the name.
+  -- We first need to see if it matches an import, then we need to validate that it's in the module.
+  | (Nothing, Just (modulePath, defName)) <- (qualifier, Map.lookup name importedSymbols) = do
+      def <- getDefModule context modulePath defName
+      (context', result) <- transpileExp context def
+      return (updateContext context context', result)
+  | Just q <- qualifier,
+    Just modulePath <- Map.lookup q importedQualifiers,
+    Just mod <- Map.lookup modulePath modules,
+    Just def <- Map.lookup name mod = do
       (context', result) <- transpileExp context def
       return (updateContext context context', result)
   | otherwise = Left [TError (UndefinedVariable $ displayName qualifier name) Nothing (Just exp) Nothing]
@@ -81,7 +130,18 @@ transpileExp context (Apply l r) = do
   (context', l) <- transpileExp context l
   (context', r) <- transpileExp (updateContext context context') r
   return (updateContext context context', Application l r)
-transpileExp context exp = error $ "Couldn't transpile exp: " ++ show exp
+transpileExp context@(Context {applyTranspilationMacro}) (MacroCall name args) = do
+  exp <- applyTranspilationMacro name args
+  (context', result) <- transpileExp context exp
+  return (updateContext context context', result)
+
+getDefModule :: Context -> [String] -> String -> TranspilationResult HExp
+getDefModule (Context {modules}) modulePath defName
+  | Just defs <- Map.lookup modulePath modules =
+      case Map.lookup defName defs of
+        Just def -> return def
+        Nothing -> Left [TError (UndefinedSymbol defName) Nothing Nothing (Just $ "Couldn't find symbol '" ++ defName ++ "' in module " ++ joinModulePath modulePath)]
+  | otherwise = Left [TError (UnresolvedImport $ joinModulePath modulePath) Nothing Nothing (Just "Tried to get def from unimported module.")]
 
 -- Update an old context with the globally accessible updates in another context
 updateContext :: Context -> Context -> Context
@@ -107,7 +167,7 @@ isExpRecursive :: String -> HExp -> Bool
 isExpRecursive name (Lambda param body)
   | param == name = False
   | otherwise = isExpRecursive name body
-isExpRecursive name (Id Nothing v) = name == v
+isExpRecursive name (Id q v) = isNothing q && name == v
 isExpRecursive name (Apply l r) = isExpRecursive name l || isExpRecursive name r
 isExpRecursive name (MacroCall _ args) = any isArgRecursive args
   where
@@ -134,6 +194,33 @@ destructureStatements (s@(Def name body) : rest) acc@(Context {defs})
         [TError (OverlappingName name) (Just s) Nothing (Just $ "Definition with name '" ++ name ++ "' already exists.")]
         (destructureStatements rest acc)
   | otherwise = destructureStatements rest (acc {defs = insert name body defs})
+destructureStatements (s@(Import path maybeQualifier maybeFields) : rest) acc@(Context {modulePaths, importedSymbols, importedQualifiers})
+  | path `elem` modulePaths =
+      gatherErrors
+        [TError (OverlappingName $ joinModulePath path) Nothing Nothing (Just "Overlapping import paths.")]
+        (destructureStatements rest acc)
+  -- Imports are a bit more tricky.
+  -- We're always going to add the module path to the context.
+  -- If we have fields, we will add those to the importedSymbols.
+  -- The keys in importedSymbols are the actual symbols that can be referenced in the code.
+  -- The values are the module path of the owner of the definition and the name in that module.
+  -- If we have an qualifier for this alias, we will add that to the importedQualifiers.
+  | otherwise =
+      destructureStatements
+        rest
+        ( acc
+            { modulePaths = path : modulePaths,
+              importedSymbols = case maybeFields of
+                Just fields ->
+                  let symbols = map (\(defName, maybeAlias) -> (fromMaybe defName maybeAlias, (path, defName))) fields
+                   in -- TODO Checking for overlapping aliases
+                      importedSymbols `union` fromList symbols
+                Nothing -> importedSymbols,
+              importedQualifiers = case maybeQualifier of
+                Just qualifier -> Map.insert qualifier path importedQualifiers
+                Nothing -> importedQualifiers
+            }
+        )
 
 gatherErrors :: [TranspilationError] -> TranspilationResult a -> TranspilationResult a
 gatherErrors errs (Left errs') = Left $ errs ++ errs'

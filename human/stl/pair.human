@@ -1,5 +1,5 @@
 module pair;
 
 def new = \left.\right. \oper. oper left right;
-def first = \left.\right. left;
-def second = \left.\right. right;
+def first = \pair. pair (\left.\right. left);
+def second = \pair. pair (\left.\right. right);

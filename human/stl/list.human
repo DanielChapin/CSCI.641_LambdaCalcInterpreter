@@ -2,6 +2,7 @@ module list;
 
 import pair as pair {first, second};
 import bool as {true, false, if, not, xor};
+import util as {id};
 
 def empty = pair::new false id;
 def cons = \val.\list. pair::new true (pair::new val list);
