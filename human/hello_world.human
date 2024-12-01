@@ -1,3 +1,5 @@
+-- BIG NOTE: The macros used in this program do not exist in this current implementation and this file is stricly for demonstration.
+--         : See ./test/bit_o_everything.human for some working examples.
 -- Programs in Human look a bit strange because literally all you have is functions.
 -- As a result, you need to explicitly define how you want the interpreter to present the result.
 -- It also means that if you want non-trivial inputs, or at least inputs you don't want to encode by hand,
