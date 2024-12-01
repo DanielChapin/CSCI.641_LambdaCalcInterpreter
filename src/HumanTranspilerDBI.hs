@@ -3,6 +3,7 @@ module HumanTranspilerDBI where
 import Consts (humanYCombinator)
 import Control.Arrow (Arrow (second))
 import DBIUTLC (DBILExp (Abstraction, Application, Var))
+import Data.Foldable (foldrM)
 import Data.Functor ((<&>))
 import Data.List (elemIndex)
 import Data.Map (Map, empty, fromList, insert, member, union)
@@ -23,8 +24,9 @@ data Context = Context
     importedQualifiers :: Map String [String],
     varStack :: [String],
     importPaths :: [FilePath],
-    modules :: Map [String] (Map String HExp),
     modulePaths :: [[String]],
+    moduleKeys :: Map [String] FilePath,
+    moduleContexts :: Map FilePath Context,
     applyTranspilationMacro :: String -> [HMacroArg] -> TranspilationResult HExp
   }
 
@@ -41,9 +43,10 @@ emptyContext =
       importedSymbols = empty,
       importedQualifiers = empty,
       varStack = [],
-      importPaths = ["."],
-      modules = empty,
+      importPaths = ["."], -- Sane default?
       modulePaths = [],
+      moduleKeys = empty,
+      moduleContexts = empty,
       applyTranspilationMacro = \macroName args -> Left [TError Other Nothing (Just $ MacroCall macroName args) (Just "No macro handler supplied.")]
     }
 
@@ -75,26 +78,62 @@ transpile program@(HProgram moduleName statements) importPaths macros =
     Left err -> return $ Left err
     Right context -> do
       -- Resolve all module imports
+      -- TODO This DOES NOT recursively resolve all the imports of the imported files. This IS required for modules.
       importContext <- resolveImports context
       case importContext of
         Left err -> return $ Left err
-        Right context@(Context {outs}) ->
-          return . transpile' $ context {outs = map (\(name, body) -> (name, encodeRecursion name body)) outs}
+        Right context ->
+          return . transpile' . fixRecursion $ context
+
+fixRecursion :: Context -> Context
+fixRecursion context@(Context {defs}) = context {defs = fromList (fix $ Map.toList defs)}
+  where
+    fix :: [(String, HExp)] -> [(String, HExp)]
+    fix = map (\(name, body) -> (name, encodeRecursion name body))
 
 resolveImports :: Context -> IO (TranspilationResult Context)
-resolveImports context@(Context {modulePaths, importPaths, modules}) = do
-  imports <- mapM (flip resolveImport importPaths) modulePaths
-  case selectErrorsElseValues imports of
-    Left errs -> return $ Left [TError (ImportFailure errs) Nothing Nothing Nothing]
-    Right imports ->
-      let lookups = selectErrorsElseValues $ map (\(HProgram _ statements) -> moduleLookup statements) imports
-       in case lookups of
-            Left errLists -> return . Left $ concat errLists
-            Right mappings -> return $ Right context {modules = modules `Map.union` fromList (zip modulePaths mappings)}
+resolveImports context@(Context {modulePaths}) = foldrM resolve (Right context) modulePaths
   where
-    moduleLookup statements = do
-      context@(Context {defs}) <- destructureStatements statements emptyContext
-      return defs
+    resolve :: [String] -> TranspilationResult Context -> IO (TranspilationResult Context)
+    resolve path context = case context of
+      Left errs -> return $ Left errs
+      Right context@(Context {moduleKeys})
+        | path `Map.member` moduleKeys -> return . return $ context
+        | otherwise -> do
+            context' <- resolveImports' path context
+            case context' of
+              Left errs -> return $ Left errs
+              Right context' -> return . return $ updateContext context context'
+
+resolveImports' :: [String] -> Context -> IO (TranspilationResult Context)
+resolveImports' modulePath context@(Context {moduleKeys, importPaths, moduleContexts}) = do
+  -- This needs to be replaced with a fold because the modules imported in the previous evaluation should be passed on to the next instace.
+  result <- resolveImport modulePath importPaths
+  case result of
+    Left err -> return $ Left [TError (ImportFailure [err]) Nothing Nothing (Just "Could not resolve imports.")]
+    Right (filepath, prog) -> do
+      context <- return $ context {moduleKeys = Map.insert modulePath filepath moduleKeys}
+      modContext <- moduleContext (newContext context) prog
+      return $ case modContext of
+        Left errs -> Left errs
+        Right modContext -> Right $ updateContext (context {moduleContexts = Map.insert filepath modContext moduleContexts}) modContext
+  where
+    newContext :: Context -> Context
+    newContext (Context {importPaths, moduleKeys, moduleContexts, applyTranspilationMacro}) =
+      emptyContext {importPaths, moduleKeys, moduleContexts, applyTranspilationMacro}
+    moduleContext :: Context -> HProgram -> IO (TranspilationResult Context)
+    moduleContext context (HProgram _ statements) =
+      -- TODO Recursively resolve imports (within the current context.)
+      -- Also keep in mind that we bubble up the moduleContexts but then keep the results coming back down the stack.
+      case destructureStatements statements context of
+        Left errs -> return . Left $ errs
+        Right subContext -> do
+          subContext <- resolveImports subContext
+          return $ case subContext of
+            Left errs -> Left errs
+            -- TODO Don't we lose all the destructured defs here by only updating the context?
+            -- Right subContext -> Right $ updateContext context subContext
+            Right subContext -> Right subContext
 
 transpile' :: Context -> TranspilationResult [(String, DBILExp)]
 transpile' (Context {outs = []}) = return []
@@ -107,7 +146,7 @@ transpileExp :: Context -> HExp -> TranspilationResult (Context, DBILExp)
 transpileExp context@(Context {varStack}) (Lambda param body) = do
   (context', body) <- transpileExp (context {varStack = param : varStack}) body
   return (updateContext context context', Abstraction param body)
-transpileExp context@(Context {varStack, defs, importedSymbols, importedQualifiers, modules}) exp@(Id qualifier name)
+transpileExp context@(Context {varStack, defs, importedSymbols, importedQualifiers, moduleContexts, moduleKeys}) exp@(Id qualifier name)
   | Just index <- displayName qualifier name `elemIndex` varStack =
       return (context, Var $ toInteger index)
   | (Nothing, Just def) <- (qualifier, Map.lookup name defs) = do
@@ -115,15 +154,16 @@ transpileExp context@(Context {varStack, defs, importedSymbols, importedQualifie
       return (updateContext context context', result)
   -- Resulting to checking imports for the name.
   -- We first need to see if it matches an import, then we need to validate that it's in the module.
-  | (Nothing, Just (modulePath, defName)) <- (qualifier, Map.lookup name importedSymbols) = do
-      def <- getDefModule context modulePath defName
-      (context', result) <- transpileExp context def
+  | (Nothing, Just (modulePath, defName)) <- (qualifier, Map.lookup name importedSymbols),
+    Just key <- Map.lookup modulePath moduleKeys,
+    Just modContext <- Map.lookup key moduleContexts = do
+      (context', result) <- transpileExp modContext (Id Nothing defName)
       return (updateContext context context', result)
   | Just q <- qualifier,
     Just modulePath <- Map.lookup q importedQualifiers,
-    Just mod <- Map.lookup modulePath modules,
-    Just def <- Map.lookup name mod = do
-      (context', result) <- transpileExp context def
+    Just key <- Map.lookup modulePath moduleKeys,
+    Just modContext <- Map.lookup key moduleContexts = do
+      (context', result) <- transpileExp modContext (Id Nothing name)
       return (updateContext context context', result)
   | otherwise = Left [TError (UndefinedVariable $ displayName qualifier name) Nothing (Just exp) Nothing]
 transpileExp context (Apply l r) = do
@@ -135,17 +175,13 @@ transpileExp context@(Context {applyTranspilationMacro}) (MacroCall name args) =
   (context', result) <- transpileExp context exp
   return (updateContext context context', result)
 
-getDefModule :: Context -> [String] -> String -> TranspilationResult HExp
-getDefModule (Context {modules}) modulePath defName
-  | Just defs <- Map.lookup modulePath modules =
-      case Map.lookup defName defs of
-        Just def -> return def
-        Nothing -> Left [TError (UndefinedSymbol defName) Nothing Nothing (Just $ "Couldn't find symbol '" ++ defName ++ "' in module " ++ joinModulePath modulePath)]
-  | otherwise = Left [TError (UnresolvedImport $ joinModulePath modulePath) Nothing Nothing (Just "Tried to get def from unimported module.")]
-
 -- Update an old context with the globally accessible updates in another context
 updateContext :: Context -> Context -> Context
-updateContext old new@(Context {modules}) = old {modules}
+updateContext old@(Context {moduleContexts, moduleKeys}) new@(Context {moduleContexts = moduleContexts', moduleKeys = moduleKeys'}) =
+  old
+    { moduleContexts = moduleContexts `Map.union` moduleContexts',
+      moduleKeys = moduleKeys `Map.union` moduleKeys'
+    }
 
 encodeRecursion :: String -> HExp -> HExp
 encodeRecursion name body

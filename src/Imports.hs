@@ -17,12 +17,16 @@ data ImportError
 
 type ImportResult a = Either ImportError a
 
-resolveImport :: [String] -> [FilePath] -> IO (ImportResult HProgram)
+resolveImport :: [String] -> [FilePath] -> IO (ImportResult (FilePath, HProgram))
 resolveImport modulePath importPaths = do
   filepath <- findModulePath modulePath importPaths
   case filepath of
     Left err -> return $ Left err
-    Right filepath -> importFromFile filepath
+    Right filepath -> do
+      prog <- importFromFile filepath
+      case prog of
+        Left err -> return $ Left err
+        Right prog -> return $ Right (filepath, prog)
 
 importFromFile :: FilePath -> IO (ImportResult HProgram)
 importFromFile file = readFile file <&> importFromContents
