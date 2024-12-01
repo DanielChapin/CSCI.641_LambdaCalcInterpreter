@@ -1,0 +1,4 @@
+import simple_import as {imported};
+
+-- Note that imported is from simple_import, which gets it from simple_def.
+out imported = imported;

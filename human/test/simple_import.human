@@ -1,3 +1,5 @@
 import simple_def as { id };
 
-out imported = id;
+def imported = id;
+
+out imported = imported;

@@ -1,6 +1,7 @@
 -- Need to specify the stl as an import path
 import pair as { new as make_pair, first, second };
 import bool as { if, true, false, not, and };
+import pnum as { zero as peano_zero, decrement, increment };
 
 out get_first = first ((make_pair #id["first"]) #id["second"]);
 out get_second = second ((make_pair #id["first"]) #id["second"]);
@@ -28,3 +29,12 @@ out nested_ifs =
         #id["right"]
         #id["wrong2"]
     );
+
+out peano0 = #peano["0"];
+out peano1 = #peano["1"];
+out peano2 = #peano["2"];
+out peano3 = #peano["3"];
+
+out three_minus_three = decrement (decrement (decrement #peano["3"]));
+
+out zero_plus_plus = increment peano_zero;

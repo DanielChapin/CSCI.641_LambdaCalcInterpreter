@@ -1,0 +1,4 @@
+import pair as foo;
+import util as util {id as bar};
+
+out stuff = foo::new util::id bar;
