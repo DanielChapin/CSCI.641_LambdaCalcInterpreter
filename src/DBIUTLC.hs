@@ -58,9 +58,9 @@ step (Application (Abstraction name body) r) = Just $ substitute 0 r body
 step (Application l r) | Just r' <- step r = Just $ Application l r'
 step _ = Nothing
 
-stepHistory :: DBILExp -> [DBILExp]
-stepHistory e =
-  let stepHistory' e
-        | Just e' <- step e = e' : stepHistory' e'
-        | otherwise = []
-   in e : stepHistory' e
+stepEager :: DBILExp -> Maybe DBILExp
+stepEager (Application l r) | Just l' <- stepEager l = Just $ Application l' r
+stepEager (Application l r) | Just r' <- stepEager r = Just $ Application l r'
+stepEager (Application (Abstraction name body) r) = Just $ substitute 0 r body
+stepEager (Abstraction name body) | Just body' <- stepEager body = Just $ Abstraction name body'
+stepEager _ = Nothing

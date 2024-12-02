@@ -1,0 +1,18 @@
+import execution as {executeResult};
+import interpreter as {Abs, App, Var, step};
+import pnum as {zero, one};
+import mayb as {is_none, Some};
+
+def id = Abs (Var zero);
+
+out id = id;
+
+out exec_id = executeResult step id;
+
+out step_id = step id;
+
+--out goop = Some (App (Var zero));
+
+--out step_id_id = step (App id id);
+
+out id_id = executeResult step (App id id);

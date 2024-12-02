@@ -1,0 +1,23 @@
+-- Simple demonstration of how the flag is used for the variants of Expression.
+
+import interpreter as {Abs, App, Var, match_exp};
+import util as {id, const, TODO};
+import pnum as {zero};
+
+def abstraction = Abs TODO;
+def application = App TODO TODO;
+def variable = Var zero;
+
+out abstraction = abstraction;
+out application = application;
+out variable = variable;
+
+def match =
+  match_exp
+  (const #id["Abstraction"])
+  (const #id["Application"])
+  (const #id["Variable"]);
+
+out match_abs = match abstraction;
+out match_app = match application;
+out match_var = match variable;

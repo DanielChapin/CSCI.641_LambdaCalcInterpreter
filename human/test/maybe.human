@@ -1,0 +1,8 @@
+import mayb as {Some, None, match_maybe};
+import util as {ERR, const, id};
+
+out some = Some #id["some"];
+out none = None;
+
+out match_some = match_maybe id (const ERR) (Some #id["some"]);
+out match_none = match_maybe (const ERR) id None;

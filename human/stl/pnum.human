@@ -11,6 +11,9 @@ def is_zero = \num. not (first num);
 def increment = \num. pair::new true num;
 def decrement = \num. second num;
 
+def one = increment zero;
+def two = increment one;
+
 def eq = \a.\b.
   if (and (is_zero a) (is_zero b))
     true

@@ -1,0 +1,105 @@
+module interpreter;
+-- This module contains a lambda calculus interpreter (not so disimilar to the one found in src/DBIUTLC.hs)
+-- written in the lambda calculus.
+-- It only supports de Bruijn Index variables; no names here for the sake of brevity.
+
+-- The structure (with commentary) is as follows (where tuples refer to the stl's pair implementation):
+-- Note that all numbers are assumed to follow the stl's pnum (Peano Numeral) implementation.
+-- Expression ::= (0, Expression)                   << A lambda-abstraction. (Note that there's no variable name)
+--            ::= (1, (Expression, Expression))     << An application of two expressions.
+--            ::= (2, <number>)                     << A (hopefully) bound variable in de Bruijn Index form.
+-- And that's the whole thing!
+
+import pair as pair {first, second, unpair};
+import bool as {true, false, if};
+import pnum as {zero, one, is_zero, lt, eq, plus, increment, decrement};
+import util as {id, const, ERR};
+import mayb as {Some, None, unwrap, is_some};
+
+def Abs = \body.
+  pair::new
+    zero
+    body;
+
+def App = \l.\r.
+  pair::new
+    (increment zero)
+    (pair::new l r);
+
+def Var = \num.
+  pair::new
+    (increment (increment zero))
+    num;
+
+def match_exp = \abstraction.\application.\variable.\exp.
+  unpair exp
+  (\flag.\val.
+    -- Matching on the flag and calling the respective callback.
+    if (is_zero flag) (abstraction val)
+      (if (is_zero (decrement flag)) (application val)
+        (if (is_zero (decrement (decrement flag))) (variable val)
+          -- Return the ERROR id if the flag is invalid.
+          ERR
+        )
+      )
+  );
+
+def match_abs = match_exp id (const ERR) (const ERR);
+def match_app = match_exp (const ERR) id (const ERR);
+def match_var = match_exp (const ERR) (const ERR) id;
+
+def is_abs = \x. (is_zero (first x));
+def is_app = \x. (eq one (first x));
+def is_var = \x. (eq two (first x));
+
+def shift = \d.\c.
+  match_exp
+    ( -- Abstraction
+      \body. Abs (shift d (increment c) body)
+    )
+    ( -- Application
+      \exps. unpair exps (\l.\r. App (shift d c l) (shift d c r))
+    )
+    ( -- Variable
+      \x.
+        if (lt x c)
+          (Var x)
+          (Var (plus x d))
+    );
+
+def substitute = \target.\substitution.
+  match_exp
+    ( -- Abstraction
+      \body. Abs (substitute (increment target) (shift one zero substitution) body)
+    )
+    ( -- Application
+      \exps. unpair exps (\l.\r. App (substitute target substitution l) (substitute target substitution r))
+    )
+    ( -- Variable
+      \x.
+        if (eq x target)
+          substitution
+          (Var x)
+    );
+
+def step = 
+  match_exp
+    (const None)
+    ( -- Application
+      \exp. unpair 
+        (\l.\r. 
+          (\l'.
+            if (is_some l')
+              (Some (App (unwrap l') r))
+              (if (is_abs l)
+                (Some (substitute zero r (second l)))
+                (\r'.
+                  if (is_some r')
+                    (Some (App l (unwrap r')))
+                    None
+                ) (step r)
+              )
+          ) (step l)
+        ) exp
+    )
+    (const None);

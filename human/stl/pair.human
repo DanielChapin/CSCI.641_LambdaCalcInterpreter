@@ -3,3 +3,7 @@ module pair;
 def new = \left.\right. \oper. oper left right;
 def first = \pair. pair (\left.\right. left);
 def second = \pair. pair (\left.\right. right);
+
+def unpair = \pair.\func. pair func;
+
+def swap = \pair. unpair pair (\l.\r. new r l);

@@ -1,0 +1,10 @@
+module execution;
+
+import mayb as {match_maybe};
+import util as {const};
+
+def executeResult = \step.\exp.
+  match_maybe
+    (\exp'. executeResult step exp')
+    (const exp)
+    (step exp);

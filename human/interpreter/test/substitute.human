@@ -1,0 +1,9 @@
+-- Simple demonstration of substitutions
+
+import interpreter as {Abs, App, Var, substitute, match_var, match_abs};
+import pnum as {zero, one};
+
+out simplest = substitute zero (Var one) (Var zero);
+-- NOTE: This following one crashes if you try to eagerly evaluate it after full lazy evaluation!
+-- out simple_nested = substitute one (Var one) (Abs (Var zero));
+out simple_nested = match_abs (substitute one (Var one) (Abs (Var zero)));

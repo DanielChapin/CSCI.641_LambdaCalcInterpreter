@@ -1,3 +1,8 @@
 module util;
 
 def id = \x. x;
+
+def ERR = \ERROR.ERROR;
+def TODO = \TODO.TODO;
+
+def const = \val.\_. val;

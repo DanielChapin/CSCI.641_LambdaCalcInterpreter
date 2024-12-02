@@ -1,0 +1,23 @@
+module mayb;
+
+import bool as {true, false, not, if};
+import pair as pair {first, second};
+import util as {id};
+
+def Some = \val. pair::new true val;
+def None = pair::new false id;
+
+def is_some = first;
+def is_none = \maybe. not (is_some maybe);
+
+def unwrap = second;
+
+def match_maybe = \some.\none.\maybe.
+  if (is_some maybe)
+    (some (unwrap maybe))
+    (none id);
+
+def map_some = \func.\maybe.
+  if (is_some maybe)
+    (Some (func (unwrap maybe)))
+    None;

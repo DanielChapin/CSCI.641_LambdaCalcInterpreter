@@ -1,0 +1,16 @@
+-- Simple demonstration of shift
+
+import interpreter as {Abs, App, Var, shift, match_exp};
+import pnum as {zero};
+import util as {const, id, ERR};
+
+out shift_1_0 = shift #peano["1"] zero (Var zero);
+
+out shift_1_0_thunked = 
+  match_exp 
+  (const ERR)
+  (const ERR)
+  id
+  (shift #peano["1"] zero (Var zero));
+
+out shift_app = shift #peano["1"] zero (App (Abs (Var zero)) (Abs (Var zero)));

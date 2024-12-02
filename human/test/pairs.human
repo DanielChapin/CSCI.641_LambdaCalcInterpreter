@@ -1,4 +1,4 @@
-import pair as pair {first, second};
+import pair as pair {first, second, unpair, swap};
 
 out simple = pair::new #id["a"] #id["b"];
 
@@ -7,3 +7,7 @@ out third_nested = first (second (pair::new (pair::new #id["a"] #id["b"]) (pair:
 
 out get_first = first (pair::new #id["first"] #id["second"]);
 out get_second = second (pair::new #id["first"] #id["second"]);
+
+out swap = swap (pair::new #id["L"] #id["R"]);
+
+out unpair = unpair (pair::new #id["L"] #id["R"]);
