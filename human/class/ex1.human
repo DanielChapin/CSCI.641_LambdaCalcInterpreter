@@ -1,0 +1,8 @@
+import util as {id};
+
+def apply_self = \y. y y;
+
+def macro_call = #id["hello"];
+
+out my_id = macro_call;
+out ex1 = apply_self id macro_call;
