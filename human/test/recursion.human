@@ -1,0 +1,10 @@
+-- Some simple recursion tests.
+import pnum as {is_zero, decrement};
+import bool as {if};
+
+def goto_zero = \num. 
+  if (is_zero num)
+    num
+    (goto_zero (decrement num));
+
+out countdown = goto_zero #peano["0"];

@@ -1,0 +1,12 @@
+-- Sampling how recursion is encoded by the human transpiler.
+
+def f = \n. f n;
+
+out simple = f;
+
+def factorial = \n. 
+  #id["if"] (#id["eq"] n #id["zero"])
+    #id["one"]
+    (#id["times"] n (factorial (#id["minus"] n #id["one"])));
+
+out funky_factorial = factorial;

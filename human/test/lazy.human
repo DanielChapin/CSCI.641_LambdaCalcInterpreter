@@ -1,0 +1,10 @@
+import bool as {true, if};
+
+def infty = \n. infty n;
+
+out unending = infty true;
+
+out lazy =
+  if true
+    true
+    infty true;

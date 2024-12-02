@@ -53,10 +53,9 @@ substitute target substitution (Application l r) =
   Application (substitute target substitution l) (substitute target substitution r)
 
 step :: DBILExp -> Maybe DBILExp
-step (Application l r)
-  | Just l' <- step l = Just $ Application l' r
-  | Just r' <- step r = Just $ Application l r'
+step (Application l r) | Just l' <- step l = Just $ Application l' r
 step (Application (Abstraction name body) r) = Just $ substitute 0 r body
+step (Application l r) | Just r' <- step r = Just $ Application l r'
 step _ = Nothing
 
 stepHistory :: DBILExp -> [DBILExp]

@@ -1,0 +1,11 @@
+module interpreter;
+-- This module contains a lambda calculus interpreter (not so disimilar to the one found in src/DBIUTLC.hs)
+-- written in the lambda calculus.
+-- It only supports de Bruijn Index variables; no names here for the sake of brevity.
+
+-- The structure (with commentary) is as follows (where tuples refer to the stl's pair implementation):
+-- Note that all numbers are assumed to follow the stl's pnum (Peano Numeral) implementation.
+-- Expression ::= (0, Expression)                   << A lambda-abstraction. (Note that there's no variable name)
+--            ::= (1, (Expression, Expression))     << An application of two expressions.
+--            ::= (2, <number>)                     << A (hopefully) bound variable in de Bruijn Index form.
+-- And that's the whole thing!

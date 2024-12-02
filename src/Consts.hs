@@ -6,7 +6,12 @@ charLambda :: Char
 charLambda = 'λ'
 
 humanYCombinator :: HExp
-humanYCombinator = Lambda "x" $ Apply (Id Nothing "x") (Id Nothing "x")
+humanYCombinator =
+  let f' = "fun*"
+      f = Id Nothing f'
+      x' = "arg*"
+      x = Id Nothing x'
+   in Lambda f' (Apply (Lambda x' $ Apply x x) (Lambda x' $ Apply f (Apply x x)))
 
 humanTrue :: HExp
 humanTrue = Lambda "x" $ Lambda "y" $ Id Nothing "x"

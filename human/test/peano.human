@@ -1,0 +1,39 @@
+-- Some testcases for validating the stl's peano numeral implementation
+import pnum as {zero, is_zero, increment, decrement, eq, lt, plus};
+
+out zero = zero;
+out macro_zero = #peano["0"];
+out one = #peano["1"];
+
+out three = increment (increment (increment zero));
+out macro_three = #peano["3"];
+
+out zero_is_zero = is_zero zero;
+out macro_zero_is_zero = is_zero #peano["0"];
+
+out one_is_zero = is_zero #peano["1"];
+out three_is_zero = is_zero #peano["3"];
+
+out decrement_one = decrement #peano["1"];
+out decrement_two = decrement #peano["2"];
+
+out zero_eq_zero = eq #peano["0"] #peano["0"];
+out one_eq_zero = eq #peano["1"] #peano["0"];
+out one_eq_one = eq #peano["1"] #peano["1"];
+out one_eq_two = eq #peano["1"] #peano["2"];
+out ten_eq_ten = eq #peano["10"] #peano["10"];
+
+out zero_lt_zero = lt #peano["0"] #peano["0"];
+out one_lt_zero = lt #peano["1"] #peano["0"];
+out one_lt_one = lt #peano["1"] #peano["1"];
+out one_lt_two = lt #peano["1"] #peano["2"];
+out two_lt_one = lt #peano["2"] #peano["1"];
+out ten_lt_ten = lt #peano["10"] #peano["10"];
+out zero_lt_ten = lt #peano["0"] #peano["10"];
+
+out zero_plus_zero = plus zero zero;
+out zero_plus_one = plus zero #peano["1"];
+out one_plus_one = plus #peano["1"] #peano["1"];
+out three_plus_one = plus #peano["3"] #peano["1"];
+out one_plus_three = plus #peano["1"] #peano["3"];
+out two_plus_two = plus #peano["2"] #peano["2"];

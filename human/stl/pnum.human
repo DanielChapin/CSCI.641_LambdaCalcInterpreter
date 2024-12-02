@@ -2,7 +2,7 @@
 module pnum;
 
 import pair as pair {first, second};
-import bool as {true, false};
+import bool as {true, false, not, if, and, or};
 import util as {id};
 
 def zero = pair::new false id;
@@ -10,3 +10,27 @@ def is_zero = \num. not (first num);
 
 def increment = \num. pair::new true num;
 def decrement = \num. second num;
+
+def eq = \a.\b.
+  if (and (is_zero a) (is_zero b))
+    true
+    (
+      if (or (is_zero a) (is_zero b))
+        false
+        (eq (decrement a) (decrement b))
+    );
+
+-- a < b
+def lt = \a.\b.
+  if (is_zero b)
+    false
+    (
+      if (is_zero a)
+        true
+        (lt (decrement a) (decrement b))
+    );
+
+def plus = \a.\b.
+  if (is_zero a)
+    b
+    (plus (decrement a) (increment b));

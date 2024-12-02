@@ -1,0 +1,12 @@
+def unceasing = \n. unceasing n;
+
+def y_comb = \f. (\x. x x) (\x. f (x x));
+def almost_unceasing = \f. \n. f n;
+def unceasing' = y_comb almost_unceasing;
+
+out unceasing = unceasing;
+out y_comb = y_comb;
+out unceasing' = unceasing';
+
+--out non_terminating = unceasing (\x.x);
+--out non_terminating' = unceasing' (\x.x);

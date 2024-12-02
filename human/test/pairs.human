@@ -1,0 +1,9 @@
+import pair as pair {first, second};
+
+out simple = pair::new #id["a"] #id["b"];
+
+out nested = pair::new (pair::new #id["a"] #id["b"]) (pair::new #id["c"] #id["d"]);
+out third_nested = first (second (pair::new (pair::new #id["a"] #id["b"]) (pair::new #id["c"] #id["d"])));
+
+out get_first = first (pair::new #id["first"] #id["second"]);
+out get_second = second (pair::new #id["first"] #id["second"]);

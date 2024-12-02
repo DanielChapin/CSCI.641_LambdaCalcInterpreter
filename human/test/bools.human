@@ -1,0 +1,22 @@
+import bool as {true, false, not, and, or, xor};
+
+out true = true;
+out false = false;
+
+out not_true = not true;
+out not_false = not false;
+
+out true_and_true = and true true;
+out true_and_false = and true false;
+out false_and_true = and false true;
+out false_and_false = and false false;
+
+out true_or_true = or true true;
+out true_or_false = or true false;
+out false_or_true = or false true;
+out false_or_false = or false false;
+
+out true_xor_true = xor true true;
+out true_xor_false = xor true false;
+out false_xor_true = xor false true;
+out false_xor_false = xor false false;

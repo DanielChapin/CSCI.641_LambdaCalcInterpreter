@@ -131,9 +131,7 @@ resolveImports' modulePath context@(Context {moduleKeys, importPaths, moduleCont
           subContext <- resolveImports subContext
           return $ case subContext of
             Left errs -> Left errs
-            -- TODO Don't we lose all the destructured defs here by only updating the context?
-            -- Right subContext -> Right $ updateContext context subContext
-            Right subContext -> Right subContext
+            Right subContext -> Right $ fixRecursion subContext
 
 transpile' :: Context -> TranspilationResult [(String, DBILExp)]
 transpile' (Context {outs = []}) = return []
@@ -194,7 +192,8 @@ encodeRecursion name body
             | param /= name = Lambda param $ substituteAll body
           substituteAll (Apply l r) = Apply (substituteAll l) (substituteAll r)
           substituteAll (Id Nothing name')
-            | name == name' = Apply (Id Nothing recName) (Id Nothing recName)
+            -- \| name == name' = Apply (Id Nothing recName) (Id Nothing recName)
+            | name == name' = Id Nothing recName
           substituteAll (MacroCall macro args) = MacroCall macro $ map substituteMacroArg args
           substituteAll exp = exp
        in Apply humanYCombinator $ Lambda recName (substituteAll body)

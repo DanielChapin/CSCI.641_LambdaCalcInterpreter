@@ -1,0 +1,8 @@
+-- Bunch of imports, do whatever you'd like.
+
+import bool as {true, false, if, not, and, or};
+import pair as {new as make_pair, first, second};
+import pnum as {is_zero, zero, eq, increment, decrement};
+import util as {id};
+
+out stuff = first (second (second (second (make_pair #id["a"] (make_pair #id["b"] (make_pair #id["c"] (make_pair #id["d"] (make_pair #id["e"] (\END.END)))))))));

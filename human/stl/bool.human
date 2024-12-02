@@ -1,7 +1,7 @@
 module bool;
 
-def true = \x.\y. x;
-def false = \x.\y. y;
+def true = \t.\f. t;
+def false = \t.\f. f;
 
 def if = \cond.\then.\else. cond then else;
 
